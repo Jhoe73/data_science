@@ -1,0 +1,21 @@
+1. **Distribuição Normal (ou Gaussiana)**: É uma das distribuições mais importantes e comumente usadas em estatística. Caracterizada por sua forma de sino, ela é definida pela sua média e desvio padrão.
+
+2. **Distribuição Uniforme Contínua**: Nesta distribuição, todos os valores têm a mesma probabilidade de ocorrência dentro de um certo intervalo. 
+
+3. **Distribuição Exponencial**: Usada frequentemente para modelar o tempo até um determinado evento, como a falha de um componente mecânico.
+
+4. **Distribuição Beta**: Útil para modelar variáveis que têm limites superior e inferior, como proporções e taxas.
+
+5. **Distribuição Gama**: É uma generalização da distribuição exponencial e é usada para modelar tempos de espera em processos que têm vários estágios.
+
+6. **Distribuição de Weibull**: Frequentemente usada em análises de confiabilidade e sobrevivência, para modelar o tempo de vida de produtos e materiais.
+
+7. **Distribuição Log-Normal**: Aplicada quando a variável de interesse é uma quantidade que cresce exponencialmente, como rendimentos financeiros.
+
+8. **Distribuição t-Student**: Utilizada para estimar o verdadeiro valor médio de uma população normalmente distribuída quando o tamanho da amostra é pequeno e o desvio padrão é desconhecido.
+
+9. **Distribuição de Pareto**: Usada em economia e seguro para modelar a distribuição de renda ou riscos grandes e raros.
+
+10. **Distribuição Cauchy**: Tem algumas semelhanças com a distribuição normal, mas com caudas mais pesadas, sendo usada em casos específicos como em física teórica.
+
+Cada uma dessas distribuições é definida por parâmetros específicos e tem aplicações particulares dependendo do tipo de dados e do contexto do problema em análise.

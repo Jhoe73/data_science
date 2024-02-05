@@ -1,0 +1,50 @@
+---
+title: "R Markdown"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+## Bloco de configuração, garante que os blocos de código código sejam exibidos na saída final(PDF), enquanto o próprio bloco de configuração permanece oculto.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 1. Gerando valores de uma lista de inteiros positivos entre 1 e 10
+
+```{r data}
+x=seq(1:10)
+x
+```
+
+## 2. Estatísticas básicas
+```{r desc}
+mean(x)
+sd(x)
+
+```
+## 3. Gerando valores aleatórios de uma nova variável em função da anterior com erros normais
+
+```{r ydata}
+set.seed(12345)
+y=x+rnorm(10)
+y
+mean(y)
+sd(y)
+```
+## 4. Plotando os dados para ver relacionamento entre x e y
+
+```{r plot, echo=FALSE}
+plot(x,y)
+```
+
+Observe que o parâmetro `echo = FALSE` foi adicionado ao fragmento de código para evitar a impressão do código R que gerou o gráfico.
+
+
+# 5. correlação entre x e y
+
+```{r cor}
+cor(x,y)
+```
+

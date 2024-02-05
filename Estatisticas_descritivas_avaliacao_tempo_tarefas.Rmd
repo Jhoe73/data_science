@@ -1,0 +1,234 @@
+---
+title: "Estatistica Descritiva na Avaliacão de Tempo de Tarefas"
+subtitle: "Hmisc - Pastecs - Psych - Assimetría - Curtose - Histograma - Boxplot - Densidade - Distribuição acumulada empírica - Correlação"
+
+header-includes:
+- \usepackage[T1]{fontenc}
+- \usepackage[utf8]{inputenc}  
+- \usepackage {amsmath}
+-  \usepackage{setspace}\singlespacing
+-  \usepackage{setspace}\singlespacing
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+  word_document: default
+fig_width: 10
+fontsize: 12pt
+geometry: margin=0.75in
+fig_height: 6
+classoption: a4paper
+---
+\newpage
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r eval=TRUE, echo=FALSE}
+# removendo dados antigos
+rm(list=ls(all.names = T))
+```
+
+# Aula 2P1 Analise Descritiva usando o Projeto 1 
+
+## 1 Descrição dos dados
+
+Estamos interessados em testar o tempo computacional de uma função no python quando se executa três tarefas diferentes de analise de dados. Dada uma base de dados, as tarefas são:
+
+- Tarefa A: Executar uma analise descritiva incluindo elaboração de gráficos;
+- Tarefa B: Estimar um modelo de regressão;
+- Tarefa C: Estimar um modelo de classificação binária.
+
+Para avaliar o desempenho foi desenvolvido um experimento onde foram testadas 50 base de dados de diferente dimensões (diferentes tamanhos de amostras) com cada tarefa. Assim, podemos assumir independência entre as tarefas executadas. As variáveis registradas são:
+
+- $tarefa$: Número de réplicas do experimento;
+- $versao$: recebe valor 1 com a versão anterior e 2 com a nova versão
+disponível;
+- $t_A$: tempo computacional em micro segundos com a tarefa A;
+- $t_B$: tempo computacional em micro segundos com a tarefa B;
+- $t_C$: tempo computacional em micro segundos com a tarefa C.
+
+
+## 2 Leitura dos dados
+
+```{r  echo=TRUE}
+# Para fixar o diretório de trabalho como diretório fonte:
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+
+# Leitura de dados em arquivo externo
+projeto1 = read.csv(file = 'projeto1.csv')
+
+# Outra opção para entrar com os dados:
+#projeto1 = read.csv(file.choose(), header=TRUE) 
+
+head(projeto1)
+dim(projeto1)
+```
+
+O arquivo projeto1.csv é uma base de dados com 5 variáveis e 50 observações correspondentes as réplicas do experimento.
+
+## 3 Estatísticas descritivas
+
+A seguir apresentamos diferentes medidas descritivas de um conjunto de dados quantitativos usando diferentes pacotes.
+
+
+```{r eval=TRUE, echo=TRUE}
+# Resumo básico
+summary(projeto1)
+
+# Quantitativas
+summary(projeto1[, 3:5])
+
+# Qualitativas
+table(projeto1[, 2])
+
+# Cinco números de Tukey. 
+five = apply(projeto1[, 3:5], 2, fivenum)
+rownames(five) = c("Min", "Q1", "Med", "Q3", "Max") 
+five
+
+# Análise descritiva usando Hmisc. 
+library(Hmisc) # Pacote deve ser instalado antes
+describe(projeto1) 
+
+# Análise descritiva usando pastecs. 
+library(pastecs) # Pacote deve ser instalado antes
+stat.desc(projeto1[, 3:5])
+
+# Análise descritiva usando psych. 
+library(psych) # Pacote deve ser instalado antes
+psych::describe(projeto1[, 3:5])
+```
+
+As diferentes medidas estatísticas foram apresentados nos slides
+e são amplamente conhecidas.
+Sugerimos usar a função \texttt{describe} do pacote \texttt{psych}.
+
+### 3.1 Assimetria e Curtoses
+
+Faremos um maior detalhe destas medidas que não foram suficientemente explicadas nos slides.
+
+```{r eval=TRUE, echo=TRUE}
+# Assimetría para as variáveis de tempo das tarefas
+tempos = projeto1[, 3:5]
+library(e1071) 
+apply(tempos, 2, skewness)
+
+# Análise de uma variável (tempo da tarefa A)
+x = projeto1$tA
+skewness(x,type=1)
+skewness(x,type=2)
+skewness(x,type=3)
+```
+
+A função \texttt{skewness} do pacote \texttt{e1071} mede, 
+intuitivamente, a assimetria. Como regra, a assimetria negativa indica que a média dos valores dos dados é menor que a mediana e a distribuição dos dados é inclinada para a esquerda. Por outro lado, a assimetria positiva indica que a média dos valores dos dados é maior do que a mediana e que a distribuição dos dados está inclinada para a direita.
+
+Na função correspondente há 3 métodos
+(ou tipos) para calcular a assimetria. Eles são descritos em
+\url{https://www.rdocumentation.org/packages/e1071/versions/1.7-12/topics/skewness}:
+
+- Tipo 1: $g_1 = m_3 / m_2^{3/2}$ onde $m_r = \sum_i (x_i - \mu)^r / n$
+- Tipo 2: $G_1 = g_1 \sqrt{n(n-1)} / (n-2)$
+- Tipo 3: $b_1 = m_3 / s^3 = g_1 ((n-1)/n)^{3/2}$
+
+O tipo 3 é o default no R. O tipo 1 é usado nos antigos livros
+de texto e o tipo 2 é usado em SAS o SPSS.
+
+
+```{r eval=TRUE, echo=TRUE}
+# Curtose para as variáveis de tempo das tarefas
+tempos = projeto1[, 3:5]
+library(e1071) 
+apply(tempos, 2, kurtosis)
+
+# Análise de uma variável (tempo da tarefa A)
+x = projeto1$tA
+kurtosis(x,type=1)
+kurtosis(x,type=2)
+kurtosis(x,type=3)
+```
+
+A função \texttt{kurtosis} do pacote \texttt{e1071} mede, 
+intuitivamente, o excesso de curtose em relação a distribuição normal que tem curtose de excesso zero e, portanto, o formato padrão da cauda ou caso mesocúrtico. O excesso de curtose negativo indicaria uma distribuição de dados de cauda fina e é considerado platicúrtico. O excesso de curtose positivo indicaria uma distribuição de cauda gorda e é considerado leptocúrtico. Na função correspondente há 3 métodos
+(ou tipos) para calcular a curtose. Eles são descritos em
+\url{https://www.rdocumentation.org/packages/e1071/versions/1.7-12/topics/kurtosis}:
+
+- Tipo 1: $g_2= m_4 / m_2^2 - 3$ onde $m_r = \sum_i (x_i - \mu)^r / n$
+- Tipo 2: $G_2 = ((n+1) g_2 + 6)\times (n-1) / ((n-2)(n-3))$
+- Tipo 3: $b_2 = m_4 / s^4 - 3 = (g_2 + 3) (1 - 1/n)^2 - 3$
+
+O tipo 3 é o default no R. O tipo 1 é usado nos antigos livros
+de texto e o tipo 2 é usado em SAS o SPSS.
+
+Nos dados, encontramos maior assimetria a direta (positiva) nos tempos
+usando as tarefas B e C e assimetria a esquerda (negativa) usando a tarefa A. Note que no caso das tarefas B e C (média > mediana) e no caso da tarefa A  (média < mediana). 
+Também encontramos maior curtose (forma leptocúrtica) usanda tarefa C, e menor curtose usanda tarefa A (platicúrtica) e curtose em torno de zero para o método B (mesocúrtica).
+
+### 3.2 Graficos
+
+A modo de ilustração, apresentamos os seguintes gráficos para a variável tempo na tarefa A.
+
+```{r  echo=TRUE}
+# Histograma básico 
+hist(x, main = "Histograma tempos na tarefa A",ylab="Frequência",
+     xlab="Tempo tarefa A")
+```
+
+Usando o histograma percebemos que a forma dos dados apresenta bimodalidade. 
+
+```{r  echo=TRUE}
+# Boxplot 
+boxplot(x, horizontal = TRUE, main = "Boxplot tempos na tarefa A")
+```
+
+A figura do Box plot confirma a assimetría a esquerda da tarefa A e a forma platicúrtica dos dados. 
+
+```{r eval=TRUE, echo=TRUE}
+# Densidade 
+plot(density(x), main = "Densidade estimada ", ylab="Proporção",
+     xlab="Tempo tarefa A")
+```
+
+A densidade mostrada acima confirma a bimodalidade dos dados de tempo usando a tarefa A. 
+
+```{r eval=TRUE, echo=TRUE}
+# Função de distribuição acumulada empírica
+plot(ecdf(x), main = "Distribuição acumulada empírica", xlab="Tempo tarefa A")
+```
+
+Também percebemos, que não há assimetria na função de distribuição acumulada empírica.
+
+
+## 4 Análise descritiva bidimensional
+
+A seguir apresentamos uma análise correlacional entre todas as variáveis de tempo de execução de tarefas
+
+```{r eval=TRUE, echo=TRUE}
+#Analise correlacional
+cor(projeto1[, 3:5])
+#teste de correlação entre variáveis
+cor.test(projeto1[, 3],projeto1[, 4])
+```
+Inicialmente apresentamos o índice de correlação de pearson e
+posteriormente desenvolvemos um teste onde a hipótese nula
+é que não existe correlação entre o tempo A e o tempo B. Neste
+caso como o valor-p$=4.367e-09$ podemos concluir que ambos tempos
+estão correlacionados. Note que o sinal é negativo indicando que
+a correlação é inversa aquí.
+
+A seguinte figura é usada para reportar os resultados da análise
+correlacional e análise descriva simultáneamente
+
+```{r eval=TRUE, echo=TRUE}
+#Analise correlacional com mais informação
+pairs.panels(projeto1[, 3:5])
+```
+
+Na diagonal mostramos o histograma e densidade dos dados, no panel
+entre cada variável mostramos o diagrama de dispersão dos dados assim o valor da correlação de pearson.
+
+
+
