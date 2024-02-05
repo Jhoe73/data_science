@@ -1,0 +1,370 @@
+---
+title: "Inferência Bayesiana usando R"
+header-includes:
+- \usepackage[T1]{fontenc}
+- \usepackage[utf8]{inputenc}  
+- \usepackage {amsmath}
+-  \usepackage{setspace}\singlespacing
+-  \usepackage{setspace}\singlespacing
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+  word_document: default
+fig_width: 10
+fontsize: 12pt
+geometry: margin=0.75in
+fig_height: 6
+classoption: a4paper
+---
+\newpage
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 1. Exemplo 1. Intervalo para proporção
+
+Suponha que estamos interessados em construir  um intervalo de confiança para a proporção $p$ de pessoas não favoráveis a uma nova linha de metrô em São Paulo. Uma empresa contratada obteve respostas de $n=400$ e estimou que $\hat{p}=0,30$. Como podemos fazer inferência acerca de 
+$p$ sob enfoque clássico e bayesiano?
+
+A seguir apresentamos o  código do exemplo 1 mostrado nos slides
+
+
+### 1.1 Solução Clássica
+
+```{r}
+rm(list=ls(all.names = T))
+n=400
+pbarra=0.3
+#nivel de confiança
+alfa=0.05
+z=qnorm(1-alfa/2)
+z
+#Intervalo de confiança
+varpbarra=pbarra*(1-pbarra)/n
+#limite superior
+pbarra-z*sqrt(varpbarra)
+#limite superior
+pbarra+z*sqrt(varpbarra)
+```
+
+Podemos concluir, com um nível de confiança de 95%, que a proporção  de pessoas não favoráveis a uma nova linha de metrô em São Paulo se encontra em aproximadamente um intervalo entre 26 e 35%.
+
+### 1.2 Solução Bayesiana
+
+
+```{r}
+#hyperparametros da priori
+mu=0.35
+sigma2=0.01
+a=-mu*(sigma2+mu**2-mu)/sigma2
+a
+b=(sigma2+mu**2-mu)*(mu-1)/sigma2
+b
+psim=seq(0,1,0.01)
+dpsimpriori=dbeta(psim,a,b)
+plot(psim,dpsimpriori,ylim=c(0,18), col="blue",pch=12,lty=2,type = "l", lwd=2,
+     xlab="p",ylab="densidade de p" )
+#posterior exata
+apos=127.6125
+bpos=294.375
+dpsimposteriori=dbeta(psim,apos,bpos)
+lines(psim,dpsimposteriori,col="black",pch=18,lty=1, type = "l",lwd=2)
+legend(0.6, 5, legend=c("Priori", "Posteriori"),
+       col=c("blue", "black"), lty=1:2, cex=0.8)
+#medidas a posteriori
+library(psych)
+mediapost=apos/(apos+bpos)
+varpost=mediapost*(1-mediapost)/(1+apos+bpos)
+mediapost;varpost
+#intervalo de credibilidade
+qbeta(0.025,apos,bpos); qbeta(0.975,apos,bpos)
+
+```
+
+A média a pósteriori é $0,30$. Os percentis do intervalo de credibilidade
+ são $P_{97,5}=0,35$, $P_{2,5}=0,26$ então a probabilidade
+de estar entre $0,26$ e $0,35$ é de $90\%$.
+
+
+## 2. Regressão Normal: Dados de prestigio 
+
+No tópico de Análise de Regressão se chegou a um modelo final para os dados de prestigio. Qual é a solução bayesiana alternativa para estes
+dados?.
+
+Os dados podem ser lidos da seguinte forma.
+
+```{r}
+rm(list=ls(all.names = T))
+## Leitura dos dados
+library(rstudioapi)
+# Para fixar o diretório de trabalho como diretório fonte:
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+dados1 <- read.csv("Prestigio.csv")
+dim(dados1)
+head(dados1)
+str(dados1)
+names(dados1)
+```
+
+Para os dados as seguintes considerações foram adotadas:
+
+- Implementa o modelo de regressão linear múltipla com todas as variáveis explicativas do conjunto de dados Prestigio. 
+- Use blue collar como a categoria de referência para a variável “type”, 
+- centralize as variáveis quantitativas, subtraindo-as de sua média amostral e não considere interação entre variáveis.
+- Exclua os casos (toda a linha) nos quais a informação da variável “type” está faltando. 
+
+O código correspondente é o seguinte
+
+```{r}
+## Transformação dos dados
+dados1=na.omit(dados1)
+attach(dados1)
+library(fastDummies)
+typed=dummy_cols(type)
+head(typed)
+dados1$d_prof=typed$.data_prof
+dados1$d_wc=typed$.data_wc
+dados1$income=income-mean(income)
+dados1$education=education-mean(education)
+dados1$women=women-mean(women)
+head(dados1)
+```
+
+Assim das 102 observações o modelo final está baseado em  98 casos com ocupações com dados completos.
+
+Para os dados foi proposto um processo de seleção de variáveis explicativas pelo método backward (manualmente, eliminando cada variável, com base no $valor-p$ foi teste de sua significância no modelo), considerando um nível de significância de 5%.  Assim, o modelo final para predizer o prestígio (prestige) de uma ocupação do tipo profissional considera como
+covariadas 
+- a) o tempo médio de educação (education), 
+- b) a renda média (income)
+-  c) a variável categórica correspondente ao tipo professional (d_prof). 
+
+O modelo final proponhe uma interação entre a renda média e o fato de ser profissional ou não,
+
+A seguir mostramos a solução clássica e bayesiana. No caso bayesiano consideramos duas alternativas
+usando os pacotes $\rm{arm} e $\rm{INLA}$ (os quais precisam ser instalados previamente)
+
+
+```{r}
+# Modelo final, apenas com as variáveis que foram significativas
+# classica
+rlclas=glm(prestige~ income*d_prof+education,data=dados1)
+summary(rlclas)
+# bayesiana
+install.packages("arm")
+library(arm)
+rlbay1=bayesglm(prestige~ income*d_prof+education,data=dados1)
+summary(rlbay1)
+install.packages("INLA",repos=c(getOption("repos"),INLA="https://inla.r-inla-download.org/R/stable"), dep=TRUE)
+library(INLA)
+rlbay2=inla(prestige~ income*d_prof+education,data=dados1)
+summary(rlbay2)
+```
+
+
+Os resultados mostram a proximidade na estimativa dos coeficientes de regressão entre a solução bayesiana e clássica. As pequenas diferenças se baseam nas prioris consideradas por default nestes pacotes
+
+Nos podemos observar que há uma alta variabilidade no coeficiente
+de regressão associado com professão que pode ser pesquisada posteriormente.
+Na análise de resíduos de pearson bayesiano nos identificamos algumas observações que fogem do ajuste.
+
+
+
+De acordo com o manual correspondente, no $\rm{arm}$ se usam distribuições a priori t de Student para os coeficientes
+de regressão. No caso do $\rm{INLA}$ se usa prioris nomais para estes coeficientes.
+
+
+A seguir mostramos algumas saídas que podem ser obtidas para o caso bayesiano
+usando $\rm{arm}$
+
+
+
+```{r}
+# usando arm
+coefplot(rlbay1)
+y.hat <- fitted(rlbay1)
+u <- resid(rlbay1)
+sigma <- sigma.hat(rlbay1)
+residual.plot(y.hat, u, sigma)
+```
+
+
+
+## 2. Regressão Binária: Dados de doença coronária 
+
+### 2.1 Os dados
+Dados de doença coronária segundo diferentes variáveis (EGC). 
+Dados na forma binária.
+Os dados deste exemplo correspondem aos dados coronary 
+apresentado na seção 8.5 do livro de Stokes, Davis e Koch (2000) página 212. 
+Adicionalmente eles são mostrados no Exemplo 1 da seção
+7.3.1 de Giolo (2017). O arquivo com os dados estão disponíveis  para SAS em 
+<http://support.sas.com/rnd/app/stat/cat/edition3/samples/chapter8.html> e
+<http://www.uel.br/pessoal/silvano/Dados/chd4a.txt>
+
+O arquivo contém as seguintes informações de 78 avaliados no estudo:
+dc:   doença coronária com valores 1:Tem e 0:Não tem.
+sexo: com valores 1:Masculino e  0:Feminino
+ecg:  Nível de gravidade no exame do eletrocardiograma
+0:nível baixo, 1:nível médio, 2:nível alto.
+idade: Idades entre 28 e 63 anos.
+
+Analise os dados e identifique quais fatores influenciam na doença coronária. 
+Adicionalmente,se o pacote R e calcule a estatística de Hosmer-Lemeshow 
+para avaliar o ajuste do modelo.
+
+
+
+```{r}
+dados2 <- read.csv("ECG.csv")
+head(dados2)
+tail(dados2)
+str(dados2)
+names(dados2)
+
+# Criando classes de acordo com a idade
+with(dados2, min(idade))
+with(dados2, max(idade))
+attach(dados2)
+
+#-----------
+# Gráficos -
+#-----------
+par(mai=c(1.2, 1.3, .5, .5))
+
+plot(dac ~ idade, xlab='idade (anos)', ylab='Doença', las=1, type='p',  
+     pch=19, col='blue', bty='l')
+
+```
+
+
+### 2.2 Regressão Logística Frequentista e Bayesiana
+
+
+```{r}
+#classico
+mod.1 <-glm(dac ~ sexo+ ecg+ idade, data=dados2, 
+           family=binomial(link = "logit"))
+anova(mod.1, test='Chisq')
+summary(mod.1)
+#bayesiano com arm
+library(arm)
+mod.2 <-bayesglm(dac ~ sexo+ecg+idade, data=dados2, 
+           family=binomial(link = "logit"))
+anova(mod.2, test='Chisq')
+summary(mod.2)
+#bayesiano com INLA
+install.packages("INLA",repos=c(getOption("repos"),INLA="https://inla.r-inla-download.org/R/stable"), dep=TRUE)
+library(INLA)
+mod.2alt=inla(dac ~ sexo+ecg+idade, family='binomial', control.family=list(link='logit'),data=dados2)
+summary(mod.2alt)
+```
+
+
+### 2.3 Comparando os coeficientes de regresssão 
+
+A seguir comparamos os coeficientes encontrados nos diferentes pacotes
+
+```{r}
+#classico 
+mod.1$coefficients
+#bayesiano arm
+mod.2$coefficients
+#bayesiano INLA 
+mod.2alt$summary.fixed
+```
+
+
+Os resultados mostram a proximade na estimativa dos coeficientes de regressão entre
+a solução bayesiana e clássica. As pequenas diferenças se baseam nas prioris consideradas por default nestes pacotes
+
+
+De acordo com o manual correspondente, no $\rm{arm}$ se usam distribuições a priori t de Student para os coeficientes
+de regressão. No caso do $\rm{INLA}$ se usa prioris nomais para estes coeficientes.
+
+
+A seguir mostramos algumas saídas que podem ser obtidas para o caso bayesiano
+usando $\rm{arm}$
+
+
+
+### 2.4 Analise preditivo usando curva ROC e ENVELOPE
+
+####  Analise preditivo usando curva ROC
+
+Nós podemos usar nossos resultados clássicos e bayesianos para obter a curva ROC do modelo ajustado. 
+A seguir mostramos o código correspondente para ambos casos.
+
+```{r}
+# ROC usando a saida classica
+if(!require(Epi)) install.packages("Epi",repos = "http://cran.us.r-project.org")
+require(Epi)
+ROC(form=dac~sexo+idade+ecg,plot="ROC")
+
+```
+
+
+```{r}
+# ROC usando a saida bayesiana
+if(!require(ModelGood)) install.packages("ModelGood", repos="http://R-Forge.R-project.org");
+require(ModelGood)
+mod.2roc<-Roc(mod.2)
+plot(mod.2roc,auc=TRUE)
+```
+
+####  Envelope usando saída bayesiana
+
+
+Nós podemos usar nossos resultados clássicos e bayesianos para obter o envelope do modelo
+ajustado. 
+A seguir mostramos o código correspondente para ambos casos.
+
+
+```{r}
+# ENVELOPE usando a saida classica
+require(hnp)
+hnp.mod.1 = hnp(mod.1, print.on=TRUE, plot=FALSE, halfnormal=F)
+plot(hnp.mod.1, las=1, pch=20, cex=1, col=c(1,1,1,2))
+```
+
+
+```{r}
+# ENVELOPE usando a saida bayesiana
+require(hnp)
+hnp.mod.2 = hnp(mod.2, print.on=TRUE, plot=FALSE, halfnormal=F)
+plot(hnp.mod.2, las=1, pch=20, cex=1, col=c(1,1,1,2))
+
+```
+
+
+
+## REFERENCIAS
+
+
+- Curva ROC 
+
+<https://publicifsv.sund.ku.dk/~tag/Teaching/share/R-tutorials/Advanced-statistics/How-to-Roc.html>
+
+- Inferencia Bayesiana usando INLA
+
+<https://www.flutterbys.com.au/stats/tut/tut12.10.html>
+
+- Bazán, J. L. (2021).  Regression Models to email spam classification. An introduction to the course SME0823 Regression Models and Supervised Learning II. Open Classes Program – Department of Applied Mathematic and Statistics - ICMC – University of São Paulo. August 16, 2021. (In Portuguese) 
+
+<https://jorgeluisbazan.weebly.com/uploads/1/2/5/6/125695412/spamanalysisslideshorizontal2021.pdf>
+
+
+- Giolo (2017) Introduçao a análise de dados categóricos com aplicaçoes. Blucher. ABE. Projeto FIsher.
+
+-  Regressão Linear Bayesiana com Python usando PyMC3
+
+<https://towardsdatascience.com/bayesian-linear-regression-in-python-via-pymc3-ab8c2c498211>
+
+
+-  Regressão Logística Bayesiana com Python usando PyMC3
+
+<https://towardsdatascience.com/building-a-bayesian-logistic-regression-with-python-and-pymc3-4dd463bbb16>
+
+
+- Stokes, M. E.; Davis Ch. S. and Koch, G. G. (2000) Categorical data analysis using the SAS System SAS Institute
