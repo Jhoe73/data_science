@@ -84,14 +84,14 @@ def create_dataframe(events):
         if event_type == 'out':
             last_logout = event_time
 
-    # Adiciona as primeiras entradas e últimas saídas ao registro
+    # Adiciona as entradas e saídas ao registro
     for date_str in daily_first_login:
         first_login = daily_first_login[date_str]
-        records.append({'data': date_str, 'acao': 'primeira entrada', 'hora': first_login.strftime("%H:%M:%S")})
+        records.append({'data': date_str, 'acao': 'entrada', 'hora': first_login.strftime("%H:%M:%S")})
     
     for date_str in daily_last_logout:
         last_logout = daily_last_logout[date_str]
-        records.append({'data': date_str, 'acao': 'ultima saida', 'hora': last_logout.strftime("%H:%M:%S")})
+        records.append({'data': date_str, 'acao': 'saida', 'hora': last_logout.strftime("%H:%M:%S")})
 
     # Adiciona intervalos maiores que 30 minutos
     for out_time, in_time in long_intervals:
@@ -100,6 +100,11 @@ def create_dataframe(events):
 
     # Cria um DataFrame com os registros
     df = pd.DataFrame(records, columns=['data', 'acao', 'hora'])
+
+    # Ordena as ações: entrada, ida intervalo, volta intervalo, saida
+    action_order = {'entrada': 1, 'ida intervalo': 2, 'volta intervalo': 3, 'saida': 4}
+    df['acao_order'] = df['acao'].map(action_order)
+    df = df.sort_values(by=['data', 'acao_order', 'hora']).drop(columns=['acao_order'])
 
     # Calcula horas trabalhadas, tempo de intervalo e diferença de 8 horas por dia
     work_summary = []
@@ -145,7 +150,7 @@ def main():
     # Filtros com Streamlit
     st.sidebar.header('Filtros')
     filter_date = st.sidebar.date_input('Filtrar por data', None)
-    filter_action = st.sidebar.multiselect('Filtrar por ação', ['primeira entrada', 'ida intervalo', 'volta intervalo', 'ultima saida'], default=['primeira entrada', 'ida intervalo', 'volta intervalo', 'ultima saida'])
+    filter_action = st.sidebar.multiselect('Filtrar por ação', ['entrada', 'ida intervalo', 'volta intervalo', 'saida'], default=['entrada', 'ida intervalo', 'volta intervalo', 'saida'])
 
     if filter_date:
         df = df[df['data'] == filter_date.strftime('%Y-%m-%d')]
