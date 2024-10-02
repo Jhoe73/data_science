@@ -1,28 +1,32 @@
-import os
-import sqlite3
-import pandas as pd
-from datetime import datetime, timedelta
+# Corrigindo o código para criar a tabela se ela não existir e mostrar eventos de todas as datas.
 
-# Diretório do banco de dados (dentro da pasta 'dbs')
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_DIR = os.path.join(CURRENT_DIR, 'dbs')
-DATABASE_PATH = os.path.join(DB_DIR, 'login_logout_records.db')
-
-def get_login_logout_data():
+def initialize_database():
     # Conecta ao banco de dados
     conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
 
-    # Obtém a data atual
-    current_date = datetime.now().strftime("%Y-%m-%d")
+    # Cria a tabela 'events' se ela não existir
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            event_type TEXT NOT NULL,
+            timestamp TEXT NOT NULL
+        )
+    ''')
+    conn.commit()
+    conn.close()
 
-    # Obtém todos os logs do dia atual
+def get_all_login_logout_data():
+    # Conecta ao banco de dados
+    conn = sqlite3.connect(DATABASE_PATH)
+    cursor = conn.cursor()
+
+    # Obtém todos os logs no banco de dados
     cursor.execute('''
         SELECT event_type, timestamp 
         FROM events 
-        WHERE timestamp LIKE ?
         ORDER BY timestamp
-    ''', (f'{current_date}%',))
+    ''')
 
     events = cursor.fetchall()
     conn.close()
@@ -63,9 +67,13 @@ def create_dataframe(events):
     return df
 
 def main():
-    events = get_login_logout_data()
+    # Inicializa o banco de dados e a tabela se necessário
+    initialize_database()
+
+    # Obtém todos os eventos
+    events = get_all_login_logout_data()
     if not events:
-        print("Nenhum evento de login/logout encontrado para o dia atual.")
+        print("Nenhum evento de login/logout encontrado.")
         return
 
     df = create_dataframe(events)
@@ -74,3 +82,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
