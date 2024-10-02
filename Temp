@@ -1,4 +1,17 @@
-# Corrigindo o código para criar a tabela se ela não existir e mostrar eventos de todas as datas.
+import os
+import sqlite3
+import pandas as pd
+from datetime import datetime, timedelta
+import streamlit as st
+
+# Diretório do banco de dados (dentro da pasta 'dbs')
+CURRENT_DIR = os.getcwd()
+DB_DIR = os.path.join(CURRENT_DIR, 'dbs')
+
+# Cria o diretório 'dbs' se ele não existir
+os.makedirs(DB_DIR, exist_ok=True)
+
+DATABASE_PATH = os.path.join(DB_DIR, 'login_logout_records.db')
 
 def initialize_database():
     # Conecta ao banco de dados
@@ -33,34 +46,53 @@ def get_all_login_logout_data():
     return events
 
 def create_dataframe(events):
-    first_login = None
+    # Variáveis para armazenar registros importantes
+    records = []
     last_logout = None
+    first_login = None
     long_intervals = []
 
-    last_login_time = None
-    records = []
+    # Dicionário para armazenar primeiro in e último out por data
+    daily_first_login = {}
+    daily_last_logout = {}
 
+    # Processa todos os eventos
     for event_type, timestamp in events:
         event_time = datetime.strptime(timestamp, "%Y-%m-%d %H:%M:%S")
         date_str = event_time.strftime("%Y-%m-%d")
         time_str = event_time.strftime("%H:%M:%S")
 
+        # Registra o primeiro 'in' do dia
         if event_type == 'in':
-            # Define o primeiro login se ainda não foi definido
-            if first_login is None:
-                first_login = event_time
-                records.append({'data': date_str, 'acao': 'primeira entrada', 'hora': time_str})
-            # Verifica intervalos maiores que 30 minutos
-            if last_login_time and (event_time - last_login_time > timedelta(minutes=30)):
-                long_intervals.append((last_login_time, event_time))
-                records.append({'data': last_login_time.strftime("%Y-%m-%d"), 'acao': 'ida intervalo', 'hora': last_login_time.strftime("%H:%M:%S")})
-                records.append({'data': event_time.strftime("%Y-%m-%d"), 'acao': 'volta intervalo', 'hora': time_str})
-            last_login_time = event_time
+            if date_str not in daily_first_login:
+                daily_first_login[date_str] = event_time
 
+        # Registra o último 'out' do dia
         elif event_type == 'out':
-            # Atualiza o último logout
+            daily_last_logout[date_str] = event_time
+
+        # Adiciona intervalos de tempo entre 'out' e o próximo 'in' com mais de 30 minutos de diferença
+        if last_logout and event_type == 'in':
+            if (event_time - last_logout > timedelta(minutes=30)):
+                long_intervals.append((last_logout, event_time))
+        
+        # Atualiza o último logout
+        if event_type == 'out':
             last_logout = event_time
-            records.append({'data': date_str, 'acao': 'ultima saida', 'hora': time_str})
+
+    # Adiciona as primeiras entradas e últimas saídas ao registro
+    for date_str in daily_first_login:
+        first_login = daily_first_login[date_str]
+        records.append({'data': date_str, 'acao': 'primeira entrada', 'hora': first_login.strftime("%H:%M:%S")})
+    
+    for date_str in daily_last_logout:
+        last_logout = daily_last_logout[date_str]
+        records.append({'data': date_str, 'acao': 'ultima saida', 'hora': last_logout.strftime("%H:%M:%S")})
+
+    # Adiciona intervalos maiores que 30 minutos
+    for out_time, in_time in long_intervals:
+        records.append({'data': out_time.strftime("%Y-%m-%d"), 'acao': 'ida intervalo', 'hora': out_time.strftime("%H:%M:%S")})
+        records.append({'data': in_time.strftime("%Y-%m-%d"), 'acao': 'volta intervalo', 'hora': in_time.strftime("%H:%M:%S")})
 
     # Cria um DataFrame com os registros
     df = pd.DataFrame(records, columns=['data', 'acao', 'hora'])
@@ -73,13 +105,13 @@ def main():
     # Obtém todos os eventos
     events = get_all_login_logout_data()
     if not events:
-        print("Nenhum evento de login/logout encontrado.")
+        st.write("Nenhum evento de login/logout encontrado.")
         return
 
     df = create_dataframe(events)
-    # Mostrar o DataFrame resultante
-    import ace_tools as tools; tools.display_dataframe_to_user(name="Login/Logout Analysis", dataframe=df)
+
+    # Mostrar o DataFrame resultante com Streamlit
+    st.dataframe(df)
 
 if __name__ == "__main__":
     main()
-
