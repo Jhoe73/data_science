@@ -49,12 +49,12 @@ def create_dataframe(events):
     # Variáveis para armazenar registros importantes
     records = []
     last_logout = None
-    first_login = None
     long_intervals = []
 
     # Dicionário para armazenar primeiro in e último out por data
     daily_first_login = {}
     daily_last_logout = {}
+    daily_intervals = {}
 
     # Processa todos os eventos
     for event_type, timestamp in events:
@@ -75,6 +75,10 @@ def create_dataframe(events):
         if last_logout and event_type == 'in':
             if (event_time - last_logout > timedelta(minutes=30)):
                 long_intervals.append((last_logout, event_time))
+                # Armazena os intervalos para o cálculo de tempo total de intervalo
+                if date_str not in daily_intervals:
+                    daily_intervals[date_str] = []
+                daily_intervals[date_str].append((last_logout, event_time))
         
         # Atualiza o último logout
         if event_type == 'out':
@@ -96,6 +100,34 @@ def create_dataframe(events):
 
     # Cria um DataFrame com os registros
     df = pd.DataFrame(records, columns=['data', 'acao', 'hora'])
+
+    # Calcula horas trabalhadas, tempo de intervalo e diferença de 8 horas por dia
+    work_summary = []
+    for date_str in daily_first_login:
+        first_in = daily_first_login[date_str]
+        last_out = daily_last_logout.get(date_str, None)
+        total_interval_hours = 0
+        
+        # Calcula o tempo total de intervalos
+        if date_str in daily_intervals:
+            for interval in daily_intervals[date_str]:
+                out_time, in_time = interval
+                total_interval_hours += (in_time - out_time).total_seconds() / 3600
+
+        if last_out:
+            total_worked_hours = (last_out - first_in).total_seconds() / 3600  # Convert to hours
+            total_worked_hours -= total_interval_hours  # Subtrai o tempo de intervalo das horas trabalhadas
+
+            work_summary.append({
+                'data': date_str,
+                'horas_trabalhadas': round(total_worked_hours, 2),
+                'tempo_intervalo': round(total_interval_hours, 2),
+                'diferenca_8h': round(total_worked_hours - 8, 2)
+            })
+    
+    work_summary_df = pd.DataFrame(work_summary)
+    df = df.merge(work_summary_df, on='data', how='left')
+
     return df
 
 def main():
@@ -109,6 +141,16 @@ def main():
         return
 
     df = create_dataframe(events)
+
+    # Filtros com Streamlit
+    st.sidebar.header('Filtros')
+    filter_date = st.sidebar.date_input('Filtrar por data', None)
+    filter_action = st.sidebar.multiselect('Filtrar por ação', ['primeira entrada', 'ida intervalo', 'volta intervalo', 'ultima saida'], default=['primeira entrada', 'ida intervalo', 'volta intervalo', 'ultima saida'])
+
+    if filter_date:
+        df = df[df['data'] == filter_date.strftime('%Y-%m-%d')]
+    
+    df = df[df['acao'].isin(filter_action)]
 
     # Mostrar o DataFrame resultante com Streamlit
     st.dataframe(df)
