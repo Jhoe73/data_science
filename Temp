@@ -1,0 +1,76 @@
+import os
+import sqlite3
+import pandas as pd
+from datetime import datetime, timedelta
+
+# Diretório do banco de dados (dentro da pasta 'dbs')
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_DIR = os.path.join(CURRENT_DIR, 'dbs')
+DATABASE_PATH = os.path.join(DB_DIR, 'login_logout_records.db')
+
+def get_login_logout_data():
+    # Conecta ao banco de dados
+    conn = sqlite3.connect(DATABASE_PATH)
+    cursor = conn.cursor()
+
+    # Obtém a data atual
+    current_date = datetime.now().strftime("%Y-%m-%d")
+
+    # Obtém todos os logs do dia atual
+    cursor.execute('''
+        SELECT event_type, timestamp 
+        FROM events 
+        WHERE timestamp LIKE ?
+        ORDER BY timestamp
+    ''', (f'{current_date}%',))
+
+    events = cursor.fetchall()
+    conn.close()
+    return events
+
+def create_dataframe(events):
+    first_login = None
+    last_logout = None
+    long_intervals = []
+
+    last_login_time = None
+    records = []
+
+    for event_type, timestamp in events:
+        event_time = datetime.strptime(timestamp, "%Y-%m-%d %H:%M:%S")
+        date_str = event_time.strftime("%Y-%m-%d")
+        time_str = event_time.strftime("%H:%M:%S")
+
+        if event_type == 'in':
+            # Define o primeiro login se ainda não foi definido
+            if first_login is None:
+                first_login = event_time
+                records.append({'data': date_str, 'acao': 'primeira entrada', 'hora': time_str})
+            # Verifica intervalos maiores que 30 minutos
+            if last_login_time and (event_time - last_login_time > timedelta(minutes=30)):
+                long_intervals.append((last_login_time, event_time))
+                records.append({'data': last_login_time.strftime("%Y-%m-%d"), 'acao': 'ida intervalo', 'hora': last_login_time.strftime("%H:%M:%S")})
+                records.append({'data': event_time.strftime("%Y-%m-%d"), 'acao': 'volta intervalo', 'hora': time_str})
+            last_login_time = event_time
+
+        elif event_type == 'out':
+            # Atualiza o último logout
+            last_logout = event_time
+            records.append({'data': date_str, 'acao': 'ultima saida', 'hora': time_str})
+
+    # Cria um DataFrame com os registros
+    df = pd.DataFrame(records, columns=['data', 'acao', 'hora'])
+    return df
+
+def main():
+    events = get_login_logout_data()
+    if not events:
+        print("Nenhum evento de login/logout encontrado para o dia atual.")
+        return
+
+    df = create_dataframe(events)
+    # Mostrar o DataFrame resultante
+    import ace_tools as tools; tools.display_dataframe_to_user(name="Login/Logout Analysis", dataframe=df)
+
+if __name__ == "__main__":
+    main()
