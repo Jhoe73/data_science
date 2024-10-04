@@ -1,12 +1,1 @@
-def format_hours_to_hms(hours):
-    # Handle negative hours
-    negative = hours < 0
-    hours = abs(hours)
-
-    # Split hours into hours, minutes, and seconds
-    h, remainder = divmod(hours * 3600, 3600)
-    m, s = divmod(remainder, 60)
-
-    # Create the formatted string
-    formatted_time = f"{'-' if negative else ''}{int(h):02}:{int(m):02}:{int(s):02}"
-    return formatted_time
+https://www.bcb.gov.br/Fis/CODCOMPE/Tabela.pdf
