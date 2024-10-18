@@ -1,157 +1,30 @@
-proc fcmp outlib=work.funcs.calc;
-    /* Função para calcular os dígitos de CPF/CNPJ */
-    function cpfcnpj_completo_gen(x $) $ 20;
-        length corpo ref $12 first second soma1 soma2 i completo $20;
-        array pesos1[12] (6, 7, 8, 9, 2, 3, 4, 5, 6, 7, 8, 9);
-        array pesos2[12] (7, 8, 9, 2, 3, 4, 5, 6, 7, 8, 9, 2);
+proc fcmp outlib=work.functions.stringfuncs;
+    function pad_and_convert(input_str $) num;
+        length padded_str $ 16;
         
-        /* Preenche com zeros à esquerda para garantir que tenha 16 dígitos */
-        x = put(input(x, 16.), z16.);
-
-        /* Separando a referência e o corpo */
-        ref = substr(x, 13, 4);
-        corpo = substr(x, 1, 12);
-
-        /* Ajustando os pesos se ref for '0000' */
-        if ref = '0000' then do;
-            /* Modificando os valores dos arrays diretamente, sem redefinir */
-            pesos1[1] = 2; pesos1[2] = 3; pesos1[3] = 4; pesos1[4] = 5; pesos1[5] = 6;
-            pesos1[6] = 7; pesos1[7] = 8; pesos1[8] = 9; pesos1[9] = 10;
-
-            pesos2[1] = 3; pesos2[2] = 4; pesos2[3] = 5; pesos2[4] = 6; pesos2[5] = 7;
-            pesos2[6] = 8; pesos2[7] = 9; pesos2[8] = 10; pesos2[9] = 11;
+        /* Verifica o tamanho da string */
+        if length(input_str) < 16 then do;
+            /* Preenche a string com '0000' no final até atingir 16 caracteres */
+            padded_str = catx("", input_str, "0000");
+            
+            /* Se ainda for menor que 16 caracteres, completa com '0' no começo */
+            if length(padded_str) < 16 then 
+                padded_str = cats(repeat("0", 16 - length(padded_str)), padded_str);
+        end;
+        else do;
+            /* Se já tiver 16 ou mais caracteres, mantém os primeiros 16 */
+            padded_str = substr(input_str, 1, 16);
         end;
 
-        /* Calculando o primeiro dígito */
-        soma1 = 0;
-        do i = 1 to length(corpo);
-            soma1 = soma1 + input(substr(corpo, i, 1), 1.) * pesos1[i];
-        end;
-        first = 11 - mod(soma1, 11);
-        if first >= 10 then first = 0;
-
-        /* Calculando o segundo dígito */
-        soma2 = 0;
-        do i = 1 to length(corpo);
-            soma2 = soma2 + input(substr(corpo, i, 1), 1.) * pesos2[i];
-        end;
-        soma2 = soma2 + first * pesos2[length(corpo)];
-        second = 11 - mod(soma2, 11);
-        if second >= 10 then second = 0;
-
-        /* Criando o número completo */
-        completo = trim(corpo) || trim(ref) || put(first, 1.) || put(second, 1.);
-        return(completo);
+        /* Converte para valor numérico */
+        return(input(padded_str, 16.));
     endsub;
 run;
 
-options cmplib=work.funcs;
-
-data _null_;
-    /* Testando a função criada */
-    resultado = cpfcnpj_completo_gen('1234567890123456');
-    put resultado=;
+/* Exemplo de uso */
+data teste;
+    length original_str $ 20;
+    original_str = "1234567890"; /* Exemplo de string de 10 caracteres */
+    num_value = pad_and_convert(original_str);
+    put num_value=;
 run;
-
-
-proc fcmp outlib=work.funcs.calc;
-    /* Função para calcular os dígitos de CPF/CNPJ */
-    function cpfcnpj_completo_gen(x $) $ 20;
-        length corpo ref $12 first second soma1 soma2 i completo $20;
-        array pesos1[12] (6, 7, 8, 9, 2, 3, 4, 5, 6, 7, 8, 9);
-        array pesos2[12] (7, 8, 9, 2, 3, 4, 5, 6, 7, 8, 9, 2);
-        
-        /* Preenche com zeros à esquerda para garantir que tenha 16 dígitos */
-        x = put(input(x, 16.), z16.);
-
-        /* Separando a referência e o corpo */
-        ref = substr(x, 13, 4);
-        corpo = substr(x, 1, 12);
-
-        /* Ajustando os pesos dinamicamente se ref for '0000' */
-        if ref = '0000' then do;
-            pesos1[1] = 2; pesos1[2] = 3; pesos1[3] = 4; pesos1[4] = 5; pesos1[5] = 6;
-            pesos2[1] = 3; pesos2[2] = 4; pesos2[3] = 5; pesos2[4] = 6; pesos2[5] = 7;
-        end;
-
-        /* Função auxiliar para calcular dígitos verificadores */
-        soma1 = 0;
-        do i = 1 to length(corpo);
-            soma1 = soma1 + input(substr(corpo, i, 1), 1.) * pesos1[i];
-        end;
-        first = mod(11 - mod(soma1, 11), 10);
-
-        soma2 = 0;
-        do i = 1 to length(corpo);
-            soma2 = soma2 + input(substr(corpo, i, 1), 1.) * pesos2[i];
-        end;
-        soma2 = soma2 + first * pesos2[length(corpo)];
-        second = mod(11 - mod(soma2, 11), 10);
-
-        /* Criando o número completo */
-        completo = trim(corpo) || trim(ref) || put(first, 1.) || put(second, 1.);
-        return(completo);
-    endsub;
-run;
-
-options cmplib=work.funcs;
-
-data _null_;
-    /* Testando a função criada */
-    resultado = cpfcnpj_completo_gen('1234567890123456');
-    put resultado=;
-run;
-
-
-proc fcmp outlib=work.funcs.calc;
-    /* Função para calcular os dígitos de CPF/CNPJ */
-    function cpfcnpj_completo_gen(x $) $ 20;
-        length corpo ref $12 first second soma1 soma2 completo $20;
-        array pesos1[12] (6, 7, 8, 9, 2, 3, 4, 5, 6, 7, 8, 9);
-        array pesos2[12] (7, 8, 9, 2, 3, 4, 5, 6, 7, 8, 9, 2);
-        length i 8; /* Define a variável de índice como numérica */
-
-        /* Preenche com zeros à esquerda para garantir que tenha 16 dígitos */
-        x = put(input(x, 16.), z16.);
-
-        /* Separando a referência e o corpo */
-        ref = substr(x, 13, 4);
-        corpo = substr(x, 1, 12);
-
-        /* Ajustando os pesos dinamicamente se ref for '0000' */
-        if ref = '0000' then do;
-            pesos1[1] = 2; pesos1[2] = 3; pesos1[3] = 4; pesos1[4] = 5; pesos1[5] = 6;
-            pesos2[1] = 3; pesos2[2] = 4; pesos2[3] = 5; pesos2[4] = 6; pesos2[5] = 7;
-        end;
-
-        /* Calculando o primeiro dígito */
-        soma1 = 0;
-        do i = 1 to 12; /* Usa 12 como o tamanho do corpo */
-            soma1 = soma1 + input(substr(corpo, i, 1), 1.) * pesos1[i];
-        end;
-        first = 11 - mod(soma1, 11);
-        if first >= 10 then first = 0;
-
-        /* Calculando o segundo dígito */
-        soma2 = 0;
-        do i = 1 to 12; /* Usa 12 como o tamanho do corpo */
-            soma2 = soma2 + input(substr(corpo, i, 1), 1.) * pesos2[i];
-        end;
-        soma2 = soma2 + first * pesos2[12];
-        second = 11 - mod(soma2, 11);
-        if second >= 10 then second = 0;
-
-        /* Criando o número completo */
-        completo = trim(corpo) || trim(ref) || put(first, 1.) || put(second, 1.);
-        return(completo);
-    endsub;
-run;
-
-options cmplib=work.funcs;
-
-data _null_;
-    /* Testando a função criada */
-    resultado = cpfcnpj_completo_gen('1234567890123456');
-    put resultado=;
-run;
-
