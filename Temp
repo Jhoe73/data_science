@@ -24,3 +24,53 @@ def cpfcnpj_completo_gen(x):
     first, second = calc_digitos(corpo)
 
     return int(corpo + str(first) + str(second))
+
+proc fcmp outlib=work.funcs.cpfcnpj;
+   /* Função para calcular os dígitos verificadores */
+   function calc_digitos(corpo $) $ 2;
+      length first second f s 8;
+      array peso1[10] (9 8 7 6 5 4 3 2);
+      array peso2[10] (9 8 7 6 5 4 3 2 10 9);
+
+      /* Cálculo do primeiro dígito verificador */
+      f = 0;
+      do i = 1 to 8;
+         f + input(substr(corpo, i, 1), 1.) * peso1[i];
+      end;
+      first = 11 - mod(f, 11);
+      if first >= 10 then first = 0;
+
+      /* Cálculo do segundo dígito verificador */
+      s = 0;
+      do i = 1 to 8;
+         s + input(substr(corpo, i, 1), 1.) * peso2[i];
+      end;
+      s = s + first * 2;
+      second = 11 - mod(s, 11);
+      if second >= 10 then second = 0;
+
+      return (cats(put(first, 1.), put(second, 1.)));
+   endsub;
+
+   /* Função para gerar CPF/CNPJ completo */
+   function cpfcnpj_completo_gen(x $) $ 18;
+      length corpo $ 12 ref $ 4 result $ 18;
+      
+      ref = substr(x, length(x)-3, 4);
+      if length(x) > 12 and ref ne '0000' then
+         corpo = substr(x, 1, 12);
+      else
+         corpo = put(input(x, best12.), z16.);
+
+      result = cats(corpo, calc_digitos(corpo));
+      return (result);
+   endsub;
+run;
+
+/* Exemplo de uso */
+options cmplib=work.funcs;
+data test;
+   x = '123456789012';
+   completo = cpfcnpj_completo_gen(x);
+   put completo=;
+run;
