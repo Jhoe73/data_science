@@ -1,1 +1,42 @@
-https://www.bcb.gov.br/Fis/CODCOMPE/Tabela.pdf
+data _null_;
+    /* Variável de entrada */
+    x = '1234567890123456'; /* Exemplo de número, substitua conforme necessário */
+
+    /* Preenche com zeros à esquerda para garantir que tenha 16 dígitos */
+    x = put(input(x, 16.), z16.);
+
+    /* Separando a referência e o corpo */
+    ref = substr(x, 13, 4);
+    corpo = substr(x, 1, 12);
+
+    /* Função para calcular os dígitos */
+    length first second soma1 soma2 8;
+    array pesos1[12] (6, 7, 8, 9, 2, 3, 4, 5, 6, 7, 8, 9);
+    array pesos2[12] (7, 8, 9, 2, 3, 4, 5, 6, 7, 8, 9, 2);
+
+    if ref = '0000' then do;
+        array pesos1[9] (2, 3, 4, 5, 6, 7, 8, 9, 10);
+        array pesos2[9] (3, 4, 5, 6, 7, 8, 9, 10, 11);
+    end;
+
+    /* Calculando o primeiro dígito */
+    soma1 = 0;
+    do i = 1 to length(corpo);
+        soma1 = soma1 + input(substr(corpo, i, 1), 1.) * pesos1[i];
+    end;
+    first = 11 - mod(soma1, 11);
+    if first >= 10 then first = 0;
+
+    /* Calculando o segundo dígito */
+    soma2 = 0;
+    do i = 1 to length(corpo);
+        soma2 = soma2 + input(substr(corpo, i, 1), 1.) * pesos2[i];
+    end;
+    soma2 = soma2 + first * pesos2[length(corpo)];
+    second = 11 - mod(soma2, 11);
+    if second >= 10 then second = 0;
+
+    /* Criando o número completo */
+    completo = trim(corpo) || trim(ref) || put(first, 1.) || put(second, 1.);
+    put completo=;
+run;
