@@ -1,15 +1,15 @@
 proc fcmp outlib=work.functions.stringfuncs;
-    function pad_and_convert(input_str $) num;
+    function pad_and_convert(input_str $);
         length padded_str $ 16;
         
         /* Verifica o tamanho da string */
-        if length(input_str) < 16 then do;
-            /* Preenche a string com '0000' no final até atingir 16 caracteres */
-            padded_str = catx("", input_str, "0000");
+        if lengthn(input_str) < 16 then do;
+            /* Preenche a string com '0000' no final */
+            padded_str = trim(input_str) || "0000";
             
             /* Se ainda for menor que 16 caracteres, completa com '0' no começo */
-            if length(padded_str) < 16 then 
-                padded_str = cats(repeat("0", 16 - length(padded_str)), padded_str);
+            if lengthn(padded_str) < 16 then 
+                padded_str = repeat("0", 16 - lengthn(padded_str)) || padded_str;
         end;
         else do;
             /* Se já tiver 16 ou mais caracteres, mantém os primeiros 16 */
@@ -21,10 +21,13 @@ proc fcmp outlib=work.functions.stringfuncs;
     endsub;
 run;
 
+/* Associar a biblioteca de funções criada ao ambiente */
+options cmplib=work.functions;
+
 /* Exemplo de uso */
 data teste;
     length original_str $ 20;
-    original_str = "1234567890"; /* Exemplo de string de 10 caracteres */
+    original_str = "18585575859"; /* Exemplo de string de 11 caracteres */
     num_value = pad_and_convert(original_str);
     put num_value=;
 run;
