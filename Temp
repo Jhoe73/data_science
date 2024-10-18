@@ -1,33 +1,26 @@
-proc fcmp outlib=work.functions.stringfuncs;
-    function pad_and_convert(input_str $);
-        length padded_str $ 16;
-        
-        /* Verifica o tamanho da string */
-        if lengthn(input_str) < 16 then do;
-            /* Preenche a string com '0000' no final */
-            padded_str = trim(input_str) || "0000";
-            
-            /* Se ainda for menor que 16 caracteres, completa com '0' no começo */
-            if lengthn(padded_str) < 16 then 
-                padded_str = repeat("0", 16 - lengthn(padded_str)) || padded_str;
-        end;
-        else do;
-            /* Se já tiver 16 ou mais caracteres, mantém os primeiros 16 */
-            padded_str = substr(input_str, 1, 16);
-        end;
+def cpfcnpj_completo_gen(x):
+    """Função para gerar CPF ou CNPJ completo"""
+    def calc_digitos(corpo):
+        """Calcula os dois dígitos verificadores"""
+        f = sum([int(corpo[i]) * (9 - i % 10) for i in range(len(corpo) - 2, -1, -1)])
+        first = 11 - (f % 11)
+        if first >= 10:
+            first = 0
 
-        /* Converte para valor numérico */
-        return(input(padded_str, 16.));
-    endsub;
-run;
+        s = sum([int(corpo[i]) * (9 - (i + 1) % 10) for i in range(len(corpo) - 1, -1, -1)]) + first * 2
+        second = 11 - (s % 11)
+        if second >= 10:
+            second = 0
 
-/* Associar a biblioteca de funções criada ao ambiente */
-options cmplib=work.functions;
+        return first, second
 
-/* Exemplo de uso */
-data teste;
-    length original_str $ 20;
-    original_str = "18585575859"; /* Exemplo de string de 11 caracteres */
-    num_value = pad_and_convert(original_str);
-    put num_value=;
-run;
+    ref = x[-4:]
+    if len(str(x)) > 12 and ref != '0000':
+        x = str(x)[:12].zfill(16)
+    else:
+        x = str(x).zfill(16)
+
+    corpo = x[:12]
+    first, second = calc_digitos(corpo)
+
+    return int(corpo + str(first) + str(second))
